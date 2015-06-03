@@ -1,12 +1,10 @@
 var fs = require('fs')
 var path = require('path')
-var Writer = require('broccoli-writer')
 var symlinkOrCopySync = require('symlink-or-copy').sync
 var mapSeries = require('promise-map-series')
+var walkSync = require('walk-sync');
 
 module.exports = TreeMerger
-TreeMerger.prototype = Object.create(Writer.prototype)
-TreeMerger.prototype.constructor = TreeMerger
 function TreeMerger (inputTrees, options) {
   if (!(this instanceof TreeMerger)) return new TreeMerger(inputTrees, options)
   if (!Array.isArray(inputTrees)) {
@@ -16,10 +14,19 @@ function TreeMerger (inputTrees, options) {
   this.options = options || {}
 }
 
-TreeMerger.prototype.write = function (readTree, destDir) {
-  var self = this
+TreeMerger.prototype.rebuild = function () {
+  this.write();
+};
 
-  return mapSeries(this.inputTrees, readTree).then(function (treePaths) {
+TreeMerger.prototype.readTree = function(fullPath) {
+  return walkSync(fullPath);
+}
+
+TreeMerger.prototype.write = function () {
+  var self = this;
+  var destDir = this.outputPath;
+
+  return mapSeries(this.inputTrees, this.readTree).then(function (treePaths) {
     mergeRelativePath('')
 
     function mergeRelativePath (baseDir, possibleIndices) {
